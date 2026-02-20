@@ -1,11 +1,10 @@
 services:
-  # ─── BACKEND (Node + Puppeteer-core + System Chromium) ───────────────────────
+  # ─── BACKEND (Docker + Puppeteer + Chromium del sistema) ─────────────────────
   - type: web
     name: empleo-backend
-    runtime: node
+    runtime: docker
     rootDir: server
-    buildCommand: apt-get update && apt-get install -y chromium && npm install
-    startCommand: node server.js
+    dockerfilePath: ./Dockerfile
     plan: free
     envVars:
       - key: PORT
