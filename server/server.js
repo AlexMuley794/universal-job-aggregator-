@@ -881,6 +881,32 @@ const formatDate = (dateString) => {
     }
 };
 
+/**
+ * Remotive API — empleos remotos (sin autenticación, funciona en Render)
+ */
+const fetchRemotive = async (query) => {
+    try {
+        const url = `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(query)}&limit=15`;
+        const response = await axios.get(url, { timeout: 10000 });
+        const jobs = response.data?.jobs || [];
+        return jobs.map((job, i) => ({
+            id: `rm-${Date.now()}-${i}`,
+            title: job.title,
+            company: job.company_name || 'Empresa Remota',
+            location: 'Remoto',
+            url: job.url,
+            source: 'Remotive',
+            postedAt: formatDate(job.publication_date),
+            salary: job.salary || 'Ver en Remotive',
+            tags: ['Remoto', job.job_type || 'Tech', ...(job.tags || []).slice(0, 2)],
+            description: job.description?.replace(/<[^>]*>?/gm, '').substring(0, 200) || ''
+        }));
+    } catch (e) {
+        console.warn('⚠️ [Remotive] Failed:', e.message);
+        return [];
+    }
+};
+
 const aggregateAllJobs = async (query, location) => {
     console.log(`\n🚀 Aggregating: "${query}" in "${location}"`);
 
@@ -888,17 +914,32 @@ const aggregateAllJobs = async (query, location) => {
     const cached = getCachedData(query, location);
     if (cached) return cached;
 
-    // Determine which sources to use based on configuration
-    const results = await Promise.allSettled([
-        fetchLinkedInAPI(query, location),      // Official API
-        scrapeLinkedIn(query, location),       // Scraper as secondary source
-        fetchInfoJobsAPI(query, location),     // Official API
-        scrapeInfoJobs(query, location),        // Scraper fallback
-        fetchTecnoempleo(query, location),      // RSS + Scraper
-        scrapeIndeed(query, location),         // Scraper
-        scrapeJobatus(query, location),         // Scraper
-        scrapeInfoempleo(query, location)       // New Source
-    ]);
+    let results;
+
+    if (IS_PRODUCTION) {
+        // En producción: solo fuentes HTTP (sin Puppeteer) — los scrapers dan timeout en Render
+        console.log('🌐 [Production mode] Using HTTP-only sources (no Puppeteer)');
+        results = await Promise.allSettled([
+            fetchInfoJobsAPI(query, location),     // InfoJobs API oficial
+            fetchLinkedInAPI(query, location),     // LinkedIn API oficial
+            fetchTecnoempleo(query, location),     // Tecnoempleo RSS (HTTP)
+            fetchRemotive(query),                  // Remotive API (empleos remotos)
+        ]);
+    } else {
+        // En local: todos los scrapers disponibles
+        console.log('🔧 [Local mode] Using all sources including Puppeteer scrapers');
+        results = await Promise.allSettled([
+            fetchLinkedInAPI(query, location),
+            scrapeLinkedIn(query, location),
+            fetchInfoJobsAPI(query, location),
+            scrapeInfoJobs(query, location),
+            fetchTecnoempleo(query, location),
+            scrapeIndeed(query, location),
+            scrapeJobatus(query, location),
+            scrapeInfoempleo(query, location),
+            fetchRemotive(query),
+        ]);
+    }
 
     const allJobs = results
         .filter(r => r.status === 'fulfilled')
