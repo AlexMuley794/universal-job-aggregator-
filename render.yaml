@@ -1,10 +1,10 @@
 services:
-  # ─── BACKEND (Node + Puppeteer) ──────────────────────────────────────────────
+  # ─── BACKEND (Node + Puppeteer-core + System Chromium) ───────────────────────
   - type: web
     name: empleo-backend
     runtime: node
     rootDir: server
-    buildCommand: npm install
+    buildCommand: apt-get update && apt-get install -y chromium && npm install
     startCommand: node server.js
     plan: free
     envVars:
@@ -13,9 +13,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: false
+        value: true
       - key: PUPPETEER_EXECUTABLE_PATH
-        value: ""
+        value: /usr/bin/chromium
       - key: ADZUNA_APP_ID
         sync: false
       - key: ADZUNA_API_KEY

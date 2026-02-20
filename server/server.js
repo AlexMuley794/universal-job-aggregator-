@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import puppeteer from 'puppeteer-extra';
+import { executablePath } from 'puppeteer-core';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import UserAgent from 'user-agents';
 import dotenv from 'dotenv';
@@ -76,10 +77,10 @@ const getBrowser = async () => {
         ];
 
         browser = await puppeteer.launch({
-            headless: IS_PRODUCTION ? true : 'new',
+            headless: true,
             args,
-            // In production let puppeteer find its own bundled Chromium
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+            // En producción usa el Chromium del sistema (apt-get), en local usa el de puppeteer-core
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || executablePath(),
         });
 
         // Auto-restart on crash
