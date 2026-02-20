@@ -1,0 +1,23 @@
+{
+    "name": "job-scraper-server",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Advanced web scraping server for LinkedIn and Indeed",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "dependencies": {
+        "axios": "^1.13.5",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.4",
+        "express": "^4.18.2",
+        "fast-xml-parser": "^5.3.5",
+        "node-fetch": "^3.3.2",
+        "puppeteer": "^21.7.0",
+        "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2",
+        "user-agents": "^1.1.0"
+    }
+}
