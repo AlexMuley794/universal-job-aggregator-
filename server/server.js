@@ -351,6 +351,11 @@ let linkedinToken = null;
 let linkedinTokenExpiry = 0;
 
 const getLinkedInAccessToken = async () => {
+    // Si el usuario provee un token directo (como el WPL_AP...), lo usamos
+    if (process.env.LINKEDIN_ACCESS_TOKEN) {
+        return process.env.LINKEDIN_ACCESS_TOKEN;
+    }
+
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
 
@@ -917,14 +922,20 @@ const aggregateAllJobs = async (query, location) => {
     let results;
 
     if (IS_PRODUCTION) {
-        // En producción: solo fuentes HTTP (sin Puppeteer) — los scrapers dan timeout en Render
-        console.log('🌐 [Production mode] Using HTTP-only sources (no Puppeteer)');
-        results = await Promise.allSettled([
-            fetchInfoJobsAPI(query, location),     // InfoJobs API oficial
-            fetchLinkedInAPI(query, location),     // LinkedIn API oficial
-            fetchTecnoempleo(query, location),     // Tecnoempleo RSS (HTTP)
-            fetchRemotive(query),                  // Remotive API (empleos remotos)
-        ]);
+        // En producción: Mezcla de fuentes directas y scrapers críticos
+        console.log('🌐 [Production mode] Selective sources');
+
+        const sources = [
+            fetchTecnoempleo(query, location),     // RSS (Muy fiable)
+            fetchRemotive(query),                  // API (Muy fiable)
+            fetchLinkedInAPI(query, location),     // API con el nuevo Token
+        ];
+
+        // Solo intentamos InfoJobs Scraper si no hay API (porque no se pueden registrar más apps)
+        // Aumentamos el timeout global para permitir que Puppeteer intente InfoJobs
+        sources.push(scrapeInfoJobs(query, location));
+
+        results = await Promise.allSettled(sources);
     } else {
         // En local: todos los scrapers disponibles
         console.log('🔧 [Local mode] Using all sources including Puppeteer scrapers');
