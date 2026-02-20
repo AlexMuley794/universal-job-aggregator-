@@ -903,25 +903,34 @@ const aggregateAllJobs = async (query, location) => {
     let results;
 
     if (IS_PRODUCTION) {
-        // En producción: Mezcla de fuentes directas y scrapers críticos
-        // Nota: Mantenemos el número de scrapers bajo para no exceder RAM en Render (512MB)
-        console.log('🌐 [Production mode] All active sources');
+        // En producción: Ejecución SECUENCIAL para ahorrar RAM (Límite 512MB en Render)
+        console.log('🌐 [Production mode] Sequential execution to conserve memory');
 
         const sources = [
-            fetchTecnoempleo(query, location),     // RSS/Scraper fallback
-            fetchRemotive(query),                  // API Oficial
-            fetchLinkedInAPI(query, location),     // API -> Scraper fallback
-            scrapeIndeed(query, location),         // Scraper
-            scrapeJobatus(query, location),        // Scraper ligero
-            scrapeInfoJobs(query, location),       // Scraper (Puede estar bloqueado)
-            scrapeInfoempleo(query, location),     // Scraper
-            scrapeComputrabajo(query, location),   // Scraper
+            { name: 'Tecnoempleo', fn: () => fetchTecnoempleo(query, location) },
+            { name: 'Remotive', fn: () => fetchRemotive(query) },
+            { name: 'LinkedIn', fn: () => fetchLinkedInAPI(query, location) },
+            { name: 'Indeed', fn: () => scrapeIndeed(query, location) },
+            { name: 'Jobatus', fn: () => scrapeJobatus(query, location) },
+            { name: 'InfoJobs', fn: () => scrapeInfoJobs(query, location) },
+            { name: 'Infoempleo', fn: () => scrapeInfoempleo(query, location) },
+            { name: 'Computrabajo', fn: () => scrapeComputrabajo(query, location) },
         ];
 
-        results = await Promise.allSettled(sources);
+        const allResults = [];
+        for (const source of sources) {
+            try {
+                console.log(`⏳ Starting: ${source.name}`);
+                const res = await source.fn();
+                allResults.push(...(res || []));
+            } catch (err) {
+                console.error(`❌ Error in ${source.name}:`, err.message);
+            }
+        }
+        return allResults;
     } else {
-        // En local: todos los scrapers disponibles
-        console.log('🔧 [Local mode] Using all sources including Puppeteer scrapers');
+        // En local: todos los scrapers disponibles en paralelo
+        console.log('🔧 [Local mode] Parallel execution');
         results = await Promise.allSettled([
             fetchLinkedInAPI(query, location),
             scrapeLinkedIn(query, location),
@@ -934,6 +943,9 @@ const aggregateAllJobs = async (query, location) => {
             scrapeComputrabajo(query, location),
             fetchRemotive(query),
         ]);
+        return results
+            .filter(r => r.status === 'fulfilled')
+            .flatMap(r => r.value);
     }
 
     const allJobs = results
