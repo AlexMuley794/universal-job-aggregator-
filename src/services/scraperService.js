@@ -21,14 +21,15 @@ export const fetchExternalJobs = async (location, query = 'developer') => {
 
     try {
         const url = `${SCRAPER_API_URL}?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}`;
+        console.log(`🌐 [Scraper] Requesting: ${url}`);
 
         const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
-            // Timeout after 45 seconds
-            signal: AbortSignal.timeout(45000),
+            // Aumentamos a 90 segundos porque en Render Sequential tarda más
+            signal: AbortSignal.timeout(90000),
         });
 
         if (!response.ok) {
@@ -38,7 +39,7 @@ export const fetchExternalJobs = async (location, query = 'developer') => {
         const data = await response.json();
 
         if (data.success && Array.isArray(data.jobs)) {
-            console.log(`✅ Successfully scraped ${data.jobs.length} jobs from Multiple Sources (LinkedIn, Indeed, InfoJobs, Tecnoempleo)`);
+            console.log(`✅ Successfully scraped ${data.jobs.length} jobs from Multiple Sources`);
             return data.jobs;
         }
 
