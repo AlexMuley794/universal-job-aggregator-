@@ -12,11 +12,28 @@ services:
         value: 10000
       - key: NODE_ENV
         value: production
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: ""
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_API_KEY
+        sync: false
+      - key: INFOJOBS_CLIENT_ID
+        sync: false
+      - key: INFOJOBS_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
 
   # ─── FRONTEND (React/Vite Static Site) ──────────────────────────────────────
   - type: web
     name: empleo-frontend
     runtime: static
+    rootDir: .
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
