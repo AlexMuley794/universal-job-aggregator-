@@ -12,22 +12,15 @@ services:
         value: 10000
       - key: NODE_ENV
         value: production
-      # Puppeteer: use the bundled Chromium, no extra download
-      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: false
-      - key: PUPPETEER_EXECUTABLE_PATH
-        value: ""
 
   # ─── FRONTEND (React/Vite Static Site) ──────────────────────────────────────
-  - type: web
+  - type: static
     name: empleo-frontend
-    runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: dist
-    plan: free
     envVars:
       - key: VITE_SCRAPER_URL
-        sync: false   # Set this manually in Render dashboard to your backend URL
+        sync: false
     routes:
       - type: rewrite
         source: /*
