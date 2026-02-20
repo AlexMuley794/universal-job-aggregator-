@@ -14,10 +14,11 @@ services:
         value: production
 
   # ─── FRONTEND (React/Vite Static Site) ──────────────────────────────────────
-  - type: static
+  - type: web
     name: empleo-frontend
+    runtime: static
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_SCRAPER_URL
         sync: false
