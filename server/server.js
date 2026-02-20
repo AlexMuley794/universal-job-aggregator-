@@ -246,31 +246,22 @@ const scrapeInfoJobs = async (query, location) => {
 
         console.log(`🔍 [InfoJobs] Visiting: ${searchUrl}`);
 
-        // Short delay to appear human
-        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+        // Aumentamos tiempo en producción
+        await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 45000 });
 
-        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-
-        // Check for anti-bot / CAPTCHA
-        const pageText = await page.evaluate(() => document.body.innerText.substring(0, 500));
-        if (pageText.includes('¿Eres humano') || pageText.includes('CAPTCHA') || pageText.includes('robot')) {
-            console.warn('🤖 [InfoJobs] CAPTCHA detected, skipping.');
+        // Check for anti-bot
+        const content = await page.content();
+        if (content.includes('¿Eres humano') || content.includes('distinto de un humano')) {
+            console.warn('🤖 [InfoJobs] CAPTCHA detectado en Render.');
             return [];
         }
 
-        // Accept cookies if present
-        try {
-            await page.waitForSelector('#didomi-notice-agree-button', { timeout: 4000 });
-            await page.click('#didomi-notice-agree-button');
-            await new Promise(r => setTimeout(r, 800));
-        } catch (e) { }
-
-        // Wait for job cards — try multiple known selectors
+        // Selectores más genéricos
         const cardSelectors = [
-            '.sui-AtomCard',
-            '[data-test="offer-list-item"]',
             'li.ij-OfferList-item',
-            'article[class*="offer"]'
+            '[data-test="offer-list-item"]',
+            '.sui-AtomCard',
+            'article'
         ];
         let foundSelector = null;
         for (const sel of cardSelectors) {
@@ -353,6 +344,7 @@ let linkedinTokenExpiry = 0;
 const getLinkedInAccessToken = async () => {
     // Si el usuario provee un token directo (como el WPL_AP...), lo usamos
     if (process.env.LINKEDIN_ACCESS_TOKEN) {
+        console.log(`🔑 [LinkedIn] Using direct Access Token (Starts with: ${process.env.LINKEDIN_ACCESS_TOKEN.substring(0, 10)}...)`);
         return process.env.LINKEDIN_ACCESS_TOKEN;
     }
 
