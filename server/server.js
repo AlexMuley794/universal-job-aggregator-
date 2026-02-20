@@ -54,18 +54,38 @@ const setCachedData = (query, location, data) => {
 // Browser instance (reuse for performance)
 let browser = null;
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 const getBrowser = async () => {
-    if (!browser) {
+    if (!browser || !browser.isConnected()) {
+        const args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--window-size=1366,768',
+            '--lang=es-ES,es',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-extensions',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',  // Required for Render free tier
+            '--memory-pressure-off',
+        ];
+
         browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--window-size=1920x1080',
-                '--lang=es-ES,es',
-                '--disable-blink-features=AutomationControlled',
-            ],
+            headless: IS_PRODUCTION ? true : 'new',
+            args,
+            // In production let puppeteer find its own bundled Chromium
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        });
+
+        // Auto-restart on crash
+        browser.on('disconnected', () => {
+            console.warn('⚠️ Browser disconnected, will relaunch on next request.');
+            browser = null;
         });
     }
     return browser;
