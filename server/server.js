@@ -391,8 +391,8 @@ const fetchLinkedInAPI = async (query, location) => {
     const token = await getLinkedInAccessToken();
 
     if (!token) {
-        console.warn('⚠️ [LinkedIn] API Auth failed (Check .env). Skipping API, using scraper fallback.');
-        return [];
+        console.warn('⚠️ [LinkedIn] API Auth failed (Check .env). Using scraper fallback.');
+        return scrapeLinkedIn(query, location);
     }
 
     try {
@@ -416,22 +416,11 @@ const fetchLinkedInAPI = async (query, location) => {
         }));
     } catch (error) {
         if (error.response?.status === 403) {
-            console.warn('⚠️ [LinkedIn] API restrictiva: Tu App no tiene permiso para "Job Search".');
-            return [{
-                id: 'li-restricted',
-                title: 'Acceso Restringido a API de Empleo',
-                company: 'LinkedIn Partners',
-                location: '-',
-                url: '#',
-                source: 'LinkedIn',
-                postedAt: 'Aviso',
-                salary: '-',
-                tags: ['RESTRICCIÓN'],
-                description: 'LinkedIn requiere ser "Partner" para buscar empleos vía API. Usando scraping avanzado como alternativa.'
-            }];
+            console.warn('⚠️ [LinkedIn] API restrictiva. Usando scraper como alternativa.');
+            return scrapeLinkedIn(query, location);
         }
         console.error(`❌ [LinkedIn] API Error: ${error.message}`);
-        return [];
+        return scrapeLinkedIn(query, location); // Fallback even on other API errors
     }
 };
 
@@ -915,17 +904,19 @@ const aggregateAllJobs = async (query, location) => {
 
     if (IS_PRODUCTION) {
         // En producción: Mezcla de fuentes directas y scrapers críticos
-        console.log('🌐 [Production mode] Selective sources');
+        // Nota: Mantenemos el número de scrapers bajo para no exceder RAM en Render (512MB)
+        console.log('🌐 [Production mode] All active sources');
 
         const sources = [
-            fetchTecnoempleo(query, location),     // RSS (Muy fiable)
-            fetchRemotive(query),                  // API (Muy fiable)
-            fetchLinkedInAPI(query, location),     // API con el nuevo Token
+            fetchTecnoempleo(query, location),     // RSS/Scraper fallback
+            fetchRemotive(query),                  // API Oficial
+            fetchLinkedInAPI(query, location),     // API -> Scraper fallback
+            scrapeIndeed(query, location),         // Scraper
+            scrapeJobatus(query, location),        // Scraper ligero
+            scrapeInfoJobs(query, location),       // Scraper (Puede estar bloqueado)
+            scrapeInfoempleo(query, location),     // Scraper
+            scrapeComputrabajo(query, location),   // Scraper
         ];
-
-        // Solo intentamos InfoJobs Scraper si no hay API (porque no se pueden registrar más apps)
-        // Aumentamos el timeout global para permitir que Puppeteer intente InfoJobs
-        sources.push(scrapeInfoJobs(query, location));
 
         results = await Promise.allSettled(sources);
     } else {
@@ -940,6 +931,7 @@ const aggregateAllJobs = async (query, location) => {
             scrapeIndeed(query, location),
             scrapeJobatus(query, location),
             scrapeInfoempleo(query, location),
+            scrapeComputrabajo(query, location),
             fetchRemotive(query),
         ]);
     }
